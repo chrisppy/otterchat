@@ -19,6 +19,7 @@ package ui
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/gdamore/tcell"
 	"github.com/rivo/tview"
@@ -62,14 +63,14 @@ type UI struct {
 	AppView        *tview.Flex
 	ConnectionList *tview.List
 	Pages          *tview.Pages
-	UIPages        map[string]Page
+	UIPages        map[string]*Page
 }
 
 // Init the User Interface
 func Init() *UI {
 	ui := new(UI)
 
-	ui.UIPages = make(map[string]Page)
+	ui.UIPages = make(map[string]*Page)
 
 	ui.App = tview.NewApplication()
 
@@ -96,7 +97,7 @@ func (ui *UI) AddPage(id string) {
 		SetSelectedTextColor(tcell.ColorCornflowerBlue).
 		SetSelectedBackgroundColor(tcell.ColorBlack)
 
-	page := Page{}
+	page := &Page{}
 
 	page.ChatView = tview.NewTextView().
 		SetScrollable(true).
@@ -152,13 +153,12 @@ func (ui *UI) AddPage(id string) {
 
 	page.UserInput.SetDoneFunc(func(key tcell.Key) {
 		if key == tcell.KeyEnter {
-			txt := page.UserInput.GetText()
-			if txt != "" {
-				fmt.Fprintf(page.ChatView, "%s\n", txt)
-				page.UserInput.SetText("")
+			if err := ui.handleInput(page, id); err != nil {
+				fmt.Fprintf(page.ChatView, "%s\n", err.Error())
 			}
 		}
 	})
+
 }
 
 // Run the User Interface
@@ -166,5 +166,89 @@ func (ui *UI) Run() error {
 	if err := ui.App.SetRoot(ui.AppView, true).Run(); err != nil {
 		return err
 	}
+	return nil
+}
+
+func (ui *UI) addServer(name, url string) {
+	fmt.Fprintf(ui.UIPages["otterchat"].ChatView, "Adding IRC service named:'%s' with url:'%s'\n", name, url)
+}
+
+func (ui *UI) deleteServer(name string) {
+	fmt.Fprintf(ui.UIPages["otterchat"].ChatView, "Deleting IRC service named:'%s'\n", name)
+}
+
+func (ui *UI) handleServerCMD(strs []string) error {
+	len := len(strs)
+	if len < 3 {
+		return fmt.Errorf("must be in the form: /server [action] [name] [other params]")
+	}
+	action := strs[1]
+	name := strs[2]
+
+	switch action {
+	case "add":
+		if len != 4 {
+			return fmt.Errorf("must be in the form: /server add [name] [url]")
+		}
+		ui.addServer(name, strs[3])
+		return nil
+	case "delete":
+		if len != 3 {
+			return fmt.Errorf("must be in the form: /server delete [name]")
+		}
+		ui.deleteServer(name)
+		return nil
+	}
+	return nil
+}
+
+func (ui *UI) addChannel(name, channel string) {
+
+	ui.AddPage(channel)
+
+	ui.ConnectionList.SetCurrentItem(ui.ConnectionList.GetItemCount() - 1)
+
+	fmt.Fprintf(ui.UIPages["otterchat"].ChatView, "joining channel:'%s' on the:'%s' server\n", channel, name)
+}
+
+func (ui *UI) handleJoinCMD(strs []string) error {
+	if len(strs) != 3 {
+		return fmt.Errorf("must be in the form: /join [name] [channel]")
+	}
+
+	name := strs[1]
+	channel := strs[2]
+
+	if !strings.HasPrefix(channel, "#") {
+		return fmt.Errorf("channel must start with #")
+	}
+
+	ui.addChannel(name, channel)
+
+	return nil
+}
+
+func (ui *UI) handleInput(page *Page, id string) error {
+	txt := page.UserInput.GetText()
+	if txt == "" {
+		return nil
+	}
+	defer page.UserInput.SetText("")
+
+	if strings.HasPrefix(txt, "/") {
+		strs := strings.Split(txt, " ")
+		switch strs[0] {
+		case "/server":
+			return ui.handleServerCMD(strs)
+		case "/join":
+			return ui.handleJoinCMD(strs)
+		case "/connect":
+		}
+	}
+
+	if id != "otterchat" {
+		fmt.Fprintf(page.ChatView, "%s\n", txt)
+	}
+
 	return nil
 }

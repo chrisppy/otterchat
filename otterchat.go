@@ -29,8 +29,6 @@ func main() {
 	ui := ui.Init()
 
 	ui.AddPage("otterchat")
-	ui.AddPage("test")
-
 	ui.Pages.SwitchToPage("otterchat")
 
 	ui.App.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
