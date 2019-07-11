@@ -18,18 +18,126 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"os"
+	"path/filepath"
+	"plugin"
 
-	"github.com/chrisppy/otterchat/ui"
+	"github.com/chrisppy/otterchat/api"
 	"github.com/gdamore/tcell"
 )
 
-func main() {
-	ui := ui.Init()
+const pluginPath = "~/.otterchat/plugins"
 
-	ui.AddPage("otterchat")
-	ui.Pages.SwitchToPage("otterchat")
+func printSplashScreen(w io.Writer) {
+	const asciiOtter = `
+                                                                               
+                 ::/oooosoosoo::-                                              
+             .+hhhysssoooooooossshhhy+.                                        
+           +ddo//////////////////////sdh/                                      
+     .yyyhmh///////////////////////////+dhhyho.      @-------------------@     
+     M+//++///////o+////////////s+///////o///sM     @                     @    
+     ymo////////oNhMd/////////sNdMh/////////yN+     |       |  |  *       |    
+      -Ms///////oMMMm/////////sMMMd////////yN.      |       |--|  |       |    
+      yd/////////+so//+yhhhhs+/+so//////////mo      |       |  |  |       |    
+      Ms//////+o/////yMMMMMMMM//////o///////hN      @                     @    
+      my/////sds//////ydNMMmh+//////smo/////hy       @-------.  .--------@     
+      :No+yys/Nss+/+yhmmNNNmmmhs+/s+ym+sys+oN.               | |               
+       ymd//sysddyhdNdyyyyyyyydMhhsddoy+//mN/               / /                
+     /o..ymdo/sy////m/--------+h////yo/ydmo -/.            //                  
+   .:.   ++odhd/////+ho------sh//////dhd+o:   :+          .                    
+        o.  .yohdy+///oyysysy+///+ydhoy   :+    .                              
+       o.   y    /ohhhhyssssyhhhho:   .y   -/                                  
+       .   -:         .::::::.         o                                       
+           :                            .                                      
+                                                                               
+`
+	fmt.Fprint(w, asciiOtter)
+}
+
+func exists(path string) bool {
+	_, err := os.Stat(path)
+	return !os.IsNotExist(err)
+}
+
+func loadPlugins(w io.Writer) (map[string]api.Command, error) {
+	if !exists(pluginPath) {
+		return nil, fmt.Errorf("path: '%s' does not exist", pluginPath)
+	}
+
+	files, err := ioutil.ReadDir(pluginPath)
+	if err != nil {
+		return nil, err
+	}
+
+	commands := make(map[string]api.Command)
+
+f:
+	for _, file := range files {
+		name := file.Name()
+		if filepath.Ext(name) != ".so" {
+			continue
+		}
+
+		plug, err := plugin.Open(filepath.Join(pluginPath, name))
+		if err != nil {
+			fmt.Fprintf(w, "failed to open plugin '%s': %v\n", name, err)
+			continue
+		}
+
+		cmdSymbol, err := plug.Lookup(api.CMDSymbolName)
+		if err != nil {
+			fmt.Fprintf(w, "plugin %s does not export symbol '%s'\n", name, api.CMDSymbolName)
+			continue
+		}
+
+		cmds, ok := cmdSymbol.(api.Commands)
+		if !ok {
+			fmt.Fprintf(w, "Symbol %s (from %s) does not implement Commands interface\n", api.CMDSymbolName, name)
+			continue
+		}
+
+		for cname, cmd := range cmds.Registry() {
+			if _, ok := commands[cname]; ok {
+				fmt.Fprintf(w, "connot load plugin: '%s' due to command: '%s' already present\n", name, cname)
+				continue f
+			}
+
+			commands[cname] = cmd
+		}
+	}
+
+	if len(commands) == 0 {
+		return nil, fmt.Errorf("at least one command must be present")
+	}
+
+	return commands, nil
+}
+
+func main() {
+	ui := api.Init()
+
+	buf := &bytes.Buffer{}
+
+	// TODO: load all plugins
+	commands, err := loadPlugins(buf)
+	if err != nil {
+		fmt.Fprintf(buf, "error: %s\n", err.Error())
+	}
+
+	ui.AddPage(api.OtterchatKey, commands)
+	ui.Pages.SwitchToPage(api.OtterchatKey)
+	page := ui.PageMap[api.OtterchatKey]
+	printSplashScreen(page.ChatView)
+
+	if buf != nil {
+		fmt.Fprintf(page.ChatView, "%s\n", buf)
+	}
+
+	// TODO: check to see if there are any duplicated commands, if so return to error and exit
 
 	ui.App.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Modifiers() == tcell.ModAlt {
