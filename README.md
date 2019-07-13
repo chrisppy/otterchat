@@ -1,6 +1,8 @@
 
 # otterchat
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/chrisppy/otterchat)](https://goreportcard.com/report/github.com/chrisppy/otterchat) [![license](https://img.shields.io/github/license/chrisppy/otterchat.svg)](https://raw.githubusercontent.com/chrisppy/otterchat/master/LICENSE)
+
 otterchat is pluggable terminal based chat client written in Go.
 
 By default, otterchat comes bundled with an IRC plugin.
