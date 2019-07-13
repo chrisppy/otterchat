@@ -24,7 +24,6 @@ sudo make install [DESTDIR=/path/to/staging]
 
 ## License
 
-
 Copyright © 2019 Chris Palmer <chris@red-oxide.org>
 
 `otterchat` is available under the terms of the `GPL-3.0` license.
