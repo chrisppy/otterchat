@@ -1,8 +1,11 @@
+
 # otterchat
 
-otterchat is a pluggable terminal based chat client written in Go.
+otterchat is pluggable terminal based chat client written in Go.
 
 By default, otterchat comes bundled with an IRC plugin.
+
+Note: This is a work in progress.
 
 ## Usage
 
