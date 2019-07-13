@@ -86,7 +86,7 @@ func (c joinCMD) Desc() string {
 }
 
 func joinChannel(i *api.UI, name, channel string) {
-	i.AddPage(channel)
+	i.AddPage(channel, Commands.Registry())
 
 	i.ConnectionList.SetCurrentItem(i.ConnectionList.GetItemCount() - 1)
 

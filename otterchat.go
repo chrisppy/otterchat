@@ -25,12 +25,13 @@ import (
 	"os"
 	"path/filepath"
 	"plugin"
+	"strings"
 
 	"github.com/chrisppy/otterchat/api"
 	"github.com/gdamore/tcell"
 )
 
-const pluginPath = "~/.otterchat/plugins"
+const configPath = ".config/otterchat/plugins"
 
 func printSplashScreen(w io.Writer) {
 	const asciiOtter = `
@@ -64,6 +65,8 @@ func exists(path string) bool {
 }
 
 func loadPlugins(w io.Writer) (map[string]api.Command, error) {
+	pluginPath := filepath.Join(os.Getenv("HOME"), configPath)
+
 	if !exists(pluginPath) {
 		return nil, fmt.Errorf("path: '%s' does not exist", pluginPath)
 	}
@@ -102,12 +105,14 @@ f:
 
 		for cname, cmd := range cmds.Registry() {
 			if _, ok := commands[cname]; ok {
-				fmt.Fprintf(w, "connot load plugin: '%s' due to command: '%s' already present\n", name, cname)
+				fmt.Fprintf(w, "cannot load plugin: '%s' due to command: '%s' already present\n", name, cname)
 				continue f
 			}
 
 			commands[cname] = cmd
 		}
+
+		fmt.Fprintf(w, "Plugin: '%s' has been loaded\n", strings.TrimSuffix(name, filepath.Ext(name)))
 	}
 
 	if len(commands) == 0 {
