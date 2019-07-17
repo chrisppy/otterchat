@@ -64,7 +64,7 @@ type UI struct {
 
 // Init the User Interface
 func Init() *UI {
-	ui := new(UI)
+	ui := &UI{}
 
 	ui.PageMap = make(map[string]*Page)
 
