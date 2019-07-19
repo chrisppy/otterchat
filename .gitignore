@@ -4,6 +4,8 @@ _build/*
 .vscode/*
 build/*
 vendor/*
+*.tar.gz
+
 # Compiled Object files, Static and Dynamic libs (Shared Objects)
 *.o
 *.a
