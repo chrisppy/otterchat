@@ -24,7 +24,7 @@ make
 ```
 
 ```bash
-sudo make install [DESTDIR=/path/to/staging]
+sudo make install
 ```
 
 ## License
